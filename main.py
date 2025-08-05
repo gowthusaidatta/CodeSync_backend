@@ -1,42 +1,29 @@
-import json
+from fastapi import FastAPI, Request
 from scraping.leetcode import get_leetcode_data
 from scraping.codechef import get_profile_data as get_codechef_data
 from scraping.hackerrank import get_hackerrank_data
 
-def build_response(status_code, body_dict):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-        },
-        "body": json.dumps(body_dict)
-    }
+app = FastAPI()
 
-def lambda_handler(event, context):
+@app.get("/")
+def home():
+    return {"message": "CodeSync Backend is running ✅"}
+
+@app.get("/get-score")
+def get_score(leetcode: str = None, codechef: str = None, hackerrank: str = None):
     try:
-        params = event.get("queryStringParameters", {})
-        if not params:
-            return build_response(400, {"error": "Missing query parameters."})
+        if not any([leetcode, codechef, hackerrank]):
+            return {"error": "Missing query parameters."}
 
         response = {}
 
-        # LeetCode
-        leetcode_username = params.get("leetcode")
-        if leetcode_username:
-            response["leetcode"] = get_leetcode_data(leetcode_username)
+        if leetcode:
+            response["leetcode"] = get_leetcode_data(leetcode)
+        if codechef:
+            response["codechef"] = get_codechef_data(codechef)
+        if hackerrank:
+            response["hackerrank"] = get_hackerrank_data(hackerrank)
 
-        # CodeChef
-        codechef_username = params.get("codechef")
-        if codechef_username:
-            response["codechef"] = get_codechef_data(codechef_username)
-
-        # HackerRank
-        hackerrank_username = params.get("hackerrank")
-        if hackerrank_username:
-            response["hackerrank"] = get_hackerrank_data(hackerrank_username)
-
-        return build_response(200, response)
-
+        return response
     except Exception as e:
-        return build_response(500, {"error": str(e)})
+        return {"error": str(e)}
